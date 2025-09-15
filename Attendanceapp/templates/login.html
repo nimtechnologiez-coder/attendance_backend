@@ -1,0 +1,157 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nim Technologies - Admin Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Page background */
+        body {
+            background: linear-gradient(135deg, #1e6e64, #00b3a6);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* Navbar */
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: #008080 !important;
+            font-size: 1.5rem;
+        }
+
+        /* Center login form */
+        .login-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Card style */
+        .card {
+            background: #fffcfccc;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(0, 128, 128, 0.3);
+            padding: 30px 25px;
+            width: 100%;
+            max-width: 400px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 128, 128, 0.4);
+        }
+
+        /* Card headers */
+        h2, h4 {
+            color: #008080;
+        }
+        h2 { text-align: center; margin-bottom: 10px; font-weight: 700; }
+        h4 { text-align: center; margin-bottom: 25px; font-weight: 500; }
+
+        /* Form styles */
+        .form-floating > .form-control {
+            border-radius: 20px;
+            border: 2px solid #008080;
+            padding: 1.2rem 1rem 0.4rem 1rem;
+        }
+        .form-floating > .form-control:focus {
+            border-color: #00b3a6;
+            box-shadow: 0 0 8px rgba(0, 179, 166, 0.4);
+        }
+        .form-label {
+            color: #008080;
+            font-weight: 500;
+        }
+
+        /* Button */
+        .btn-teal {
+            background-color: #008080;
+            color: #fff;
+            font-weight: 500;
+            border-radius: 25px;
+            padding: 12px;
+            transition: all 0.3s ease;
+        }
+        .btn-teal:hover {
+            background-color: #006666;
+            transform: scale(1.05);
+        }
+
+        /* Messages */
+        .alert {
+            font-size: 0.9rem;
+            border-radius: 15px;
+            padding: 8px 12px;
+        }
+
+        /* Footer */
+        small {
+            color: #006666;
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* Responsive */
+        @media (max-width: 576px) {
+            .card {
+                padding: 25px 20px;
+            }
+            h2 { font-size: 1.6rem; }
+            h4 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">Nim Technologies</a>
+        </div>
+    </nav>
+
+    <!-- Login Form -->
+    <div class="login-container">
+        <div class="card">
+            <h2>Nim Technologies</h2>
+            <h4>Admin Login</h4>
+
+            <form method="POST" action="{% url 'login' %}">
+                {% csrf_token %}
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-danger py-1">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="form-floating mb-3">
+                    <input type="email" name="username" class="form-control" id="floatingEmail" placeholder="name@example.com" required>
+                    <label for="floatingEmail">Email address</label>
+                </div>
+
+                <div class="form-floating mb-4">
+                    <input type="password" name="password" class="form-control" id="floatingPassword" placeholder="Password" required>
+                    <label for="floatingPassword">Password</label>
+                </div>
+
+                <div class="d-grid mb-3">
+                    <button type="submit" class="btn btn-teal">Login <i class="fas fa-sign-in-alt"></i></button>
+                </div>
+            </form>
+
+            <small>© 2025 Nim Technologies</small>
+        </div>
+    </div>
+</body>
+</html>

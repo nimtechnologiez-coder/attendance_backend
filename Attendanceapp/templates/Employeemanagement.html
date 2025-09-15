@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Management</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #b7c2ce;
+      font-family: 'Inter', sans-serif;
+    }
+    .navbar {
+      border-radius: 0 0 15px 10px;
+      padding: 15px 25px;
+      background: linear-gradient(135deg, #0d6efd, #20c997);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .navbar-brand {
+      font-weight: 700;
+      color: #fff;
+      font-size: 1.4rem;
+    }
+    .navbar-nav .nav-link {
+      color: #fff;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .navbar-nav .nav-link.active {
+      font-weight: 600;
+      color: #fff;
+      border: none;
+    }
+    .table thead {
+      background-color: #0d6efd;
+      color: #fff;
+    }
+    .btn-sm i {
+      margin-right: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold" href="{% url 'home_page' %}">Nim Technologies</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/home/' %}active{% endif %}" href="{% url 'home_page' %}">
+              <i class="bi bi-calendar-check"></i> Attendance
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/employeemanagement/' %}active{% endif %}" href="{% url 'employeemanagement' %}">
+              <i class="bi bi-people"></i> Employee Management
+            </a>
+          </li>
+          <li class="nav-item ms-3">
+            <a href="{% url 'login' %}" class="btn btn-light btn-sm px-3">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-5 p-4 bg-white shadow rounded">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="fw-bold"><i class="bi bi-people-fill"></i> Employee Management</h2>
+      <a href="{% url 'add_employee' %}" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Add Employee
+      </a>
+    </div>
+
+    <table class="table table-hover table-bordered text-center align-middle">
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Password</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in employees %}
+        <tr>
+          <td>{{ emp.employee_id|default:"-" }}</td>
+          <td>{{ emp.raw_password|default:"-" }}</td>
+
+          <!-- FIXED NAME DISPLAY -->
+          <td>
+            {% if emp.user.name %}
+              {{ emp.user.name }}
+            {% elif emp.user.first_name or emp.user.last_name %}
+              {{ emp.user.first_name }} {{ emp.user.last_name }}
+            {% else %}
+              {{ emp.user.username }}
+            {% endif %}
+          </td>
+
+          <td>{{ emp.department.name|default:"-" }}</td>
+          <td>{{ emp.user.email|default:"-" }}</td>
+          <td>{{ emp.phone|default:"-" }}</td>
+          <td>
+            <a href="{% url 'edit_employee' emp.id %}" class="btn btn-warning btn-sm">
+              <i class="bi bi-pencil-square"></i> Edit
+            </a>
+            <a href="{% url 'delete_employee' emp.id %}" class="btn btn-danger btn-sm">
+              <i class="bi bi-trash"></i> Delete
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="text-center">No employees found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Attendance Dashboard - Nim Technologies</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { 
+      background-color: #b7c2ce; 
+      font-family: 'Inter', sans-serif; 
+      overflow-x: hidden; 
+    }
+
+    /* Navbar */
+    .navbar { 
+      border-radius: 0 0 15px 10px; 
+      padding: 15px 25px; 
+      background: linear-gradient(135deg, #0d6efd, #20c997); 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .navbar-brand { font-weight: 700; color: #fff; font-size: 1.4rem; }
+    .navbar-nav .nav-link { color: #fff; font-weight: 500; transition: color 0.3s, transform 0.2s;}
+    .navbar-nav .nav-link:hover { color: rgba(255,255,255,0.8); transform: scale(1.05);}
+    .navbar-nav .nav-link.active { font-weight: 600; color: #fff;}
+    .btn-logout { border-radius: 20px; transition: all 0.2s;}
+    .btn-logout:hover { transform: scale(1.05); background-color: rgba(255,255,255,0.2); color: #fff;}
+
+    /* Cards */
+    .card { 
+      border-radius: 15px; 
+      transition: transform 0.3s, box-shadow 0.3s; 
+      min-height: 100px;
+    }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.12);}
+    .card h3 { margin-top: 10px; font-size: 1.6rem; }
+
+    /* Filter section */
+    .filter-section { 
+      background-color: #fff; 
+      padding: 20px; 
+      border-radius: 15px; 
+      margin-bottom: 25px; 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    .filter-section label { font-size: 0.9rem; }
+
+    /* Table */
+    .table-responsive { 
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05); 
+      border-radius: 15px; 
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 10px 0;
+    }
+    table { min-width: 1000px; border-collapse: separate; border-spacing: 0; }
+    table thead { background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%); color: #fff; position: sticky; top: 0; z-index: 10; }
+    table tbody tr:hover { background-color: #f1f5f9; cursor: pointer; }
+    td, th { vertical-align: middle; white-space: nowrap; }
+
+    /* Permissions scroll */
+    .permissions-container {
+      max-height: 80px; 
+      overflow-y: auto; 
+      text-align: left;
+    }
+    .permissions-container span { display: block; margin-bottom: 2px; }
+
+    /* Responsive */
+    @media (max-width: 1200px) { table { min-width: 900px; } }
+    @media (max-width: 992px) {
+      .card h3 { font-size: 1.4rem; }
+      .filter-section .row > div { margin-bottom: 10px; }
+      table { min-width: 800px; }
+    }
+    @media (max-width: 768px) {
+      .card h3 { font-size: 1.2rem; }
+      .filter-section .row > div { margin-bottom: 10px; }
+      table { min-width: 700px; }
+    }
+    @media (max-width: 576px) { table { min-width: 600px; } }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'home_page' %}">Nim Technologies</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/home/' %}active{% endif %}" href="{% url 'home' %}"><i class="bi bi-calendar-check"></i> Attendance</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/employeemanagement/' %}active{% endif %}" href="{% url 'employeemanagement' %}"><i class="bi bi-people"></i> Employee Management</a>
+          </li>
+          <li class="nav-item ms-3">
+            <a href="{% url 'login' %}" class="btn btn-light btn-sm btn-logout px-3"><i class="bi bi-box-arrow-right"></i> Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-5">
+    <h2 class="mb-4 text-center fw-bold">Admin Attendance Dashboard</h2>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4 g-3">
+      <div class="col-6 col-md-2">
+        <div class="card text-center p-3 bg-white shadow-sm">
+          <h6>Total Employees</h6>
+          <h3>{{ total_employees }}</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-center p-3 bg-white shadow-sm">
+          <h6>Today Present</h6>
+          <h3>{{ present_count }}</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-center p-3 bg-white shadow-sm">
+          <h6>Today Absent</h6>
+          <h3>{{ absent_count }}</h3>
+        </div>
+      </div>
+      <div class="col-6 col-md-2">
+        <div class="card text-center p-3 bg-white shadow-sm">
+          <h6>Late Arrivals</h6>
+          <h3>{{ late_count }}</h3>
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <div class="card text-center p-3 bg-white shadow-sm">
+          <h6>Total Working Hours</h6>
+          <h3>{{ total_working_hours }}</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+      <form method="GET" class="row g-3 align-items-end">
+        <div class="col-6 col-md-2">
+          <label class="form-label fw-semibold">Start Date</label>
+          <input type="date" class="form-control" name="start_date" value="{{ start_date }}">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label fw-semibold">End Date</label>
+          <input type="date" class="form-control" name="end_date" value="{{ end_date }}">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label fw-semibold">Employee</label>
+          <input type="text" class="form-control" name="employee" placeholder="Employee Name or ID" value="{{ employee_filter }}">
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label fw-semibold">Department</label>
+          <select class="form-select" name="department">
+            <option value="">All Departments</option>
+            {% for dept in departments %}
+              <option value="{{ dept.id }}" {% if dept.id == department_filter %}selected{% endif %}>{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12 col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100">Filter</button>
+          <a href="{% url 'export_attendance_excel' %}?start_date={{ start_date }}&end_date={{ end_date }}&employee={{ employee_filter }}&department={{ department_filter }}" class="btn btn-success w-100">
+            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Attendance Table -->
+    <div class="table-responsive bg-white rounded">
+      <table class="table table-striped table-bordered mb-0 text-center">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee ID</th>
+            <th>Employee Name</th>
+            <th>Department</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Working Hours</th>
+            <th>Permissions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for att in attendance %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ att.employee.employee_id }}</td>
+              <td>{{ att.employee.user.name }}</td>
+              <td>{{ att.employee.department.name|default:"-" }}</td>
+              <td>{{ att.date }}</td>
+              <td>{{ att.status }}</td>
+              <td>{{ att.check_in_str }}</td>
+              <td>{{ att.check_out_str }}</td>
+              <td>{{ att.calculated_hours|default:"-" }}</td>
+              <td>
+                <div class="permissions-container">
+                  {% if request.user.is_superuser %}
+                    {% if att.approved_permissions %}
+                      {% for p in att.approved_permissions %}
+                        <span>{{ p.start_time_str }} - {{ p.end_time_str }}</span>
+                      {% endfor %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="10" class="text-center">No records found</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

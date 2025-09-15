@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Attendance Report - Nim Technologies</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #b7c2ce;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* Navbar */
+    .navbar {
+      border-radius: 0 0 15px 10px;
+      padding: 15px 25px;
+      background: linear-gradient(135deg, #0d6efd, #20c997);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .navbar-brand {
+      font-weight: 700;
+      color: #fff;
+      font-size: 1.4rem;
+      text-decoration: none;
+    }
+    .navbar-nav .nav-link {
+      color: #fff;
+      font-weight: 500;
+      margin-right: 15px;
+      transition: color 0.3s, transform 0.2s;
+      text-decoration: none;
+    }
+    .navbar-nav .nav-link:hover {
+      color: rgba(255,255,255,0.85);
+      transform: scale(1.05);
+      text-decoration: none;
+    }
+    .navbar-nav .nav-link.active {
+      font-weight: 600;
+      color: #fff;
+      text-decoration: none;
+    }
+    .btn-logout {
+      border-radius: 25px;
+      transition: all 0.2s;
+      color: #0d6efd;
+      font-weight: 500;
+    }
+    .btn-logout:hover {
+      transform: scale(1.05);
+      background-color: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+
+    /* Page Title */
+    h2 {
+      font-weight: 700;
+      color: #0d6efd;
+    }
+
+    /* Card and Table */
+    .card {
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .table thead {
+      background: #0d6efd;
+      color: #fff;
+    }
+    .table td, .table th {
+      vertical-align: middle;
+      font-size: 1rem;
+      padding: 0.9rem;
+    }
+
+    /* Custom column widths */
+    .table th:nth-child(1), .table td:nth-child(1) { min-width: 80px; }   /* ID */
+    .table th:nth-child(2), .table td:nth-child(2) { min-width: 220px; } /* Employee Name */
+    .table th:nth-child(3), .table td:nth-child(3) { min-width: 180px; } /* Date */
+    .table th:nth-child(4), .table td:nth-child(4) { min-width: 150px; } /* Status */
+
+    .badge {
+      border-radius: 20px;
+      font-weight: 500;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 768px) {
+      .navbar-brand { font-size: 1.2rem; }
+      .navbar-nav .nav-link { font-size: 0.9rem; margin-right: 10px; }
+      h2 { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg shadow-sm">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="{% url 'home_page' %}">Nim Technologies</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center">
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/home/' %}active{% endif %}" href="{% url 'home_page' %}">
+              <i class="bi bi-calendar-check"></i> Attendance
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/employeemanagement/' %}active{% endif %}" href="{% url 'employeemanagement' %}">
+              <i class="bi bi-people"></i> Employee Management
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if request.path == '/Report/' %}active{% endif %}" href="{% url 'Report' %}">
+              <i class="bi bi-bar-chart-line"></i> Report
+            </a>
+          </li>
+          <li class="nav-item ms-3">
+            <a href="{% url 'login' %}" class="btn btn-light btn-sm btn-logout px-3">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Report Section -->
+  <div class="container my-5">
+    <h2 class="text-center mb-4">Attendance Report</h2>
+
+    <div class="card p-3">
+      <h5 class="fw-bold mb-3">Past Attendance Records</h5>
+      <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center align-middle">
+          <thead class="table-primary">
+            <tr>
+              <th>ID</th>
+              <th>Employee Name</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for att in attendance %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ att.employee.user.get_full_name }}</td>
+              <td>{{ att.date }}</td>
+              <td>
+                {% if att.status == 'Present' %}
+                  <span class="badge bg-success">Present</span>
+                {% elif att.status == 'Absent' %}
+                  <span class="badge bg-danger">Absent</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">{{ att.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-center">No records found</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
