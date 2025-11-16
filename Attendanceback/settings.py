@@ -83,7 +83,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.mysql",
         "NAME": "attendancedb",
         "USER": "root",
-        "PASSWORD": "",  # change if your MySQL has password
+        "PASSWORD": "Saikumar278",  # change if your MySQL has password
         "HOST": "localhost",
         "PORT": "3306",
     }

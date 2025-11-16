@@ -55,4 +55,5 @@ urlpatterns = [
     path("api/permission/create/", views.create_permission_request, name="create-permission"),
     path("api/permission/list/", views.list_permissions, name="list-permissions"),
     path("api/accounts/forgot-password/", views.forgot_password, name="forgot_password")
+    
 ]

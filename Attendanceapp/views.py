@@ -1,4 +1,3 @@
-# views.py
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -7,8 +6,7 @@ from django.utils import timezone
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
-
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from io import BytesIO
 import openpyxl
 import string, secrets
@@ -22,22 +20,21 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from rest_framework import serializers
 
-# Models & Serializers
+# Models and serializers
 from .models import Employee, Department, Attendance, Permission, User
 from .serializers import EmployeeSerializer, PermissionSerializer
 
-# -------------------------------------------------------------------
-# GLOBAL CONFIG
-# -------------------------------------------------------------------
 User = get_user_model()
-IST = pytz.timezone("Asia/Kolkata")   # India Standard Time
-CUTOFF_TIME = time(10, 15)            # 10:15 AM cutoff for "Late"
-ABSENT_TIME = time(12, 0)             # After 12:00 PM => Absent
+IST = pytz.timezone("Asia/Kolkata")
 
+# Constants defining cutoff times for attendance status
+CUTOFF_TIME = time(10, 15)  # 10:15 AM Late cutoff
+ABSENT_TIME = time(12, 0)   # 12:00 PM Absent cutoff
 
-# -------------------------------------------------------------------
-# ADMIN AUTH
-# -------------------------------------------------------------------
+# -------------------------------
+# Admin Authentication Views
+# -------------------------------
+
 def login_page(request):
     if request.method == "POST":
         email = request.POST.get("username")
@@ -56,98 +53,9 @@ def logout_page(request):
     logout(request)
     return redirect("login")
 
-
-# -------------------------------------------------------------------
-# ATTENDANCE DASHBOARD
-# -------------------------------------------------------------------
-# @login_required(login_url="login")
-# def attendance_dashboard(request):
-#     start_date = request.GET.get("start_date")
-#     end_date = request.GET.get("end_date")
-#     employee_filter = request.GET.get("employee", "")
-#     department_filter = request.GET.get("department", "")
-
-#     attendance_qs = Attendance.objects.select_related("employee__user", "employee__department")
-
-#     # Filter by date
-#     try:
-#         start = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else date.today()
-#         end = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else start
-#         attendance_qs = attendance_qs.filter(date__range=(start, end))
-#     except ValueError:
-#         start = end = date.today()
-
-#     # Filter by employee
-#     if employee_filter:
-#         attendance_qs = attendance_qs.filter(
-#             Q(employee__employee_id__icontains=employee_filter) |
-#             Q(employee__user__name__icontains=employee_filter)
-#         )
-
-#     # Filter by department
-#     if department_filter:
-#         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
-
-#     updated_attendance = []
-#     for record in attendance_qs:
-#         record.approved_permissions = []
-#         if request.user.is_superuser:
-#             permissions = Permission.objects.filter(employee=record.employee, date=record.date)
-#             for p in permissions:
-#                 p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
-#                 p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
-#                 record.approved_permissions.append(p)
-
-#         # Attendance status
-#         record.calculated_hours = None
-#         if not record.check_in:
-#             record.status = "Absent"
-#             record.check_in_str = "-"
-#             record.check_out_str = "-"
-#         else:
-#             local_checkin = record.check_in.astimezone(IST).time()
-#             if local_checkin > ABSENT_TIME:
-#                 record.status = "Absent"
-#             elif local_checkin > CUTOFF_TIME:
-#                 record.status = "Late"
-#             else:
-#                 record.status = "Present"
-
-#             record.check_in_str = record.check_in.astimezone(IST).strftime("%I:%M %p")
-
-#             if record.check_out:
-#                 record.check_out_str = record.check_out.astimezone(IST).strftime("%I:%M %p")
-#                 record.calculated_hours = record.working_hours
-#             else:
-#                 record.check_out_str = "-"
-
-#         updated_attendance.append(record)
-
-#     # Summary
-#     total_employees = Employee.objects.count()
-#     present_count = sum(1 for r in updated_attendance if r.status == "Present")
-#     absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
-#     late_count = sum(1 for r in updated_attendance if r.status == "Late")
-#     total_working_hours = sum(r.calculated_hours for r in updated_attendance if r.calculated_hours)
-
-#     context = {
-#         "attendance": updated_attendance,
-#         "start_date": start_date or "",
-#         "end_date": end_date or "",
-#         "employee_filter": employee_filter,
-#         "department_filter": int(department_filter) if department_filter else "",
-#         "departments": Department.objects.all(),
-#         "total_employees": total_employees,
-#         "present_count": present_count,
-#         "absent_count": absent_count,
-#         "late_count": late_count,
-#         "total_working_hours": round(total_working_hours, 2),
-#     }
-#     return render(request, "home.html", context)
-
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q
-from datetime import datetime, date, timedelta
+# -------------------------------
+# Attendance Dashboard View
+# -------------------------------
 
 @login_required(login_url="login")
 def attendance_dashboard(request):
@@ -156,29 +64,26 @@ def attendance_dashboard(request):
     employee_filter = request.GET.get("employee", "")
     department_filter = request.GET.get("department", "")
 
-    # Parse dates
+    # Parse start/end dates safely
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date() if start_date else date.today()
         end = datetime.strptime(end_date, "%Y-%m-%d").date() if end_date else start
     except ValueError:
         start = end = date.today()
 
-    # Base queryset
-    attendance_qs = Attendance.objects.select_related("employee__user", "employee__department").filter(
-        date__range=(start, end)
-    )
+    attendance_qs = Attendance.objects.select_related("employee__user", "employee__department").filter(date__range=(start, end))
 
-    # Apply filters
+    # Apply employee filter (search by employee id or name)
     if employee_filter:
         attendance_qs = attendance_qs.filter(
             Q(employee__employee_id__icontains=employee_filter) |
             Q(employee__user__name__icontains=employee_filter)
         )
 
+    # Filter by department if given (department id)
     if department_filter:
         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
-    # Convert queryset to dict for quick lookup
     attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
 
     updated_attendance = []
@@ -186,14 +91,11 @@ def attendance_dashboard(request):
     if department_filter:
         employees = employees.filter(department_id=department_filter)
 
-    # Loop through employees for each date
-    current = start
-    while current <= end:
+    current_date = start
+    while current_date <= end:
         for emp in employees:
-            record = attendance_map.get((emp.id, current))
-
+            record = attendance_map.get((emp.id, current_date))
             if record:
-                # Existing record → process normally
                 record.approved_permissions = []
                 if request.user.is_superuser:
                     permissions = Permission.objects.filter(employee=record.employee, date=record.date)
@@ -201,8 +103,6 @@ def attendance_dashboard(request):
                         p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
                         p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
                         record.approved_permissions.append(p)
-
-                # Attendance status
                 record.calculated_hours = None
                 if not record.check_in:
                     record.status = "Absent"
@@ -216,32 +116,27 @@ def attendance_dashboard(request):
                         record.status = "Late"
                     else:
                         record.status = "Present"
-
                     record.check_in_str = record.check_in.astimezone(IST).strftime("%I:%M %p")
-
                     if record.check_out:
                         record.check_out_str = record.check_out.astimezone(IST).strftime("%I:%M %p")
                         record.calculated_hours = record.working_hours
                     else:
                         record.check_out_str = "-"
-
                 updated_attendance.append(record)
-
             else:
-                # No record → create a temporary "Absent" object
+                # No attendance record → mark as absent
                 temp = type("TempAttendance", (), {})()
                 temp.employee = emp
-                temp.date = current
+                temp.date = current_date
                 temp.status = "Absent"
                 temp.check_in_str = "-"
                 temp.check_out_str = "-"
                 temp.calculated_hours = None
                 temp.approved_permissions = []
                 updated_attendance.append(temp)
+        current_date += timedelta(days=1)
 
-        current += timedelta(days=1)
-
-    # Summary
+    # Summarize attendance counts and total working hours
     total_employees = Employee.objects.count()
     present_count = sum(1 for r in updated_attendance if r.status == "Present")
     absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
@@ -263,83 +158,9 @@ def attendance_dashboard(request):
     }
     return render(request, "home.html", context)
 
-
-
-# -------------------------------------------------------------------
-# EXPORT ATTENDANCE EXCEL
-# -------------------------------------------------------------------
-# def export_attendance_excel(request):
-#     start_date_str = request.GET.get("start_date")
-#     end_date_str = request.GET.get("end_date")
-#     employee_filter = request.GET.get("employee")
-#     department_filter = request.GET.get("department")
-
-#     try:
-#         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else date.today()
-#     except ValueError:
-#         start_date = date.today()
-#     try:
-#         end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date() if end_date_str else start_date
-#     except ValueError:
-#         end_date = start_date
-
-#     filters = {"date__range": (start_date, end_date)}
-#     if employee_filter:
-#         filters["employee__user__name__icontains"] = employee_filter
-#     if department_filter:
-#         filters["employee__department__id"] = department_filter
-
-#     attendance_qs = Attendance.objects.filter(**filters).select_related(
-#         "employee__user", "employee__department"
-#     )
-
-#     wb = openpyxl.Workbook()
-#     ws = wb.active
-#     ws.title = "Attendance Report"
-#     ws.append([
-#         "Date", "Employee ID", "Employee Name", "Department",
-#         "Check In", "Check Out", "Status", "Working Hours", "Permissions", "Remarks"
-#     ])
-
-#     for record in attendance_qs:
-#         status = "Absent" if not record.check_in else (
-#             "Late" if record.check_in.astimezone(IST).time() > CUTOFF_TIME else "Present"
-#         )
-#         total_hours = record.working_hours if record.working_hours else ""
-#         permissions_qs = Permission.objects.filter(employee=record.employee, date=record.date)
-#         permission_str = "\n".join(
-#             f"{p.start_time.strftime('%I:%M %p') if p.start_time else '-'}-"
-#             f"{p.end_time.strftime('%I:%M %p') if p.end_time else '-'} ({p.status})"
-#             for p in permissions_qs
-#         )
-
-#         ws.append([
-#             record.date.strftime("%Y-%m-%d"),
-#             record.employee.employee_id,
-#             record.employee.user.name,
-#             record.employee.department.name if record.employee.department else "",
-#             record.check_in.astimezone(IST).strftime("%I:%M %p") if record.check_in else "",
-#             record.check_out.astimezone(IST).strftime("%I:%M %p") if record.check_out else "",
-#             status,
-#             total_hours,
-#             permission_str.strip(),
-#             record.remarks or "",
-#         ])
-
-#     for col in ws.columns:
-#         max_length = max(len(str(cell.value)) for cell in col if cell.value) + 5
-#         ws.column_dimensions[col[0].column_letter].width = max_length
-
-#     output = BytesIO()
-#     wb.save(output)
-#     output.seek(0)
-#     filename = f"attendance_report_{start_date.strftime('%Y%m%d')}_to_{end_date.strftime('%Y%m%d')}.xlsx"
-#     response = HttpResponse(
-#         output,
-#         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#     )
-#     response["Content-Disposition"] = f"attachment; filename={filename}"
-#     return response
+# -------------------------------
+# Export Attendance Excel
+# -------------------------------
 
 @login_required(login_url="login")
 def export_attendance_excel(request):
@@ -348,7 +169,6 @@ def export_attendance_excel(request):
     employee_filter = request.GET.get("employee", "")
     department_filter = request.GET.get("department", "")
 
-    # Parse dates safely
     try:
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date() if start_date_str else date.today()
     except ValueError:
@@ -359,12 +179,10 @@ def export_attendance_excel(request):
     except ValueError:
         end_date = start_date
 
-    # Base queryset
     attendance_qs = Attendance.objects.filter(date__range=(start_date, end_date)).select_related(
         "employee__user", "employee__department"
     )
 
-    # Apply filters
     if employee_filter:
         attendance_qs = attendance_qs.filter(
             Q(employee__employee_id__icontains=employee_filter) |
@@ -374,14 +192,12 @@ def export_attendance_excel(request):
     if department_filter:
         attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
-    # Convert queryset into dict for lookup
     attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
 
     employees = Employee.objects.all()
     if department_filter:
         employees = employees.filter(department_id=department_filter)
 
-    # Setup Excel workbook
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Attendance Report"
@@ -390,14 +206,11 @@ def export_attendance_excel(request):
         "Check In", "Check Out", "Status", "Working Hours", "Permissions", "Remarks"
     ])
 
-    # Loop through each employee for each date
     current = start_date
     while current <= end_date:
         for emp in employees:
             record = attendance_map.get((emp.id, current))
-
             if record:
-                # Determine status
                 if not record.check_in:
                     status = "Absent"
                 else:
@@ -408,7 +221,6 @@ def export_attendance_excel(request):
                         status = "Late"
                     else:
                         status = "Present"
-
                 total_hours = record.working_hours if record.working_hours else ""
                 permissions_qs = Permission.objects.filter(employee=record.employee, date=record.date)
                 permission_str = "\n".join(
@@ -416,7 +228,6 @@ def export_attendance_excel(request):
                     f"{p.end_time.strftime('%I:%M %p') if p.end_time else '-'} ({p.status})"
                     for p in permissions_qs
                 )
-
                 ws.append([
                     record.date.strftime("%Y-%m-%d"),
                     record.employee.employee_id,
@@ -438,15 +249,13 @@ def export_attendance_excel(request):
                     emp.department.name if emp.department else "",
                     "-", "-", "Absent", "", "", "",
                 ])
-
         current += timedelta(days=1)
 
-    # Auto column width
+    # Auto width columns
     for col in ws.columns:
         max_length = max(len(str(cell.value)) for cell in col if cell.value) + 5
         ws.column_dimensions[col[0].column_letter].width = max_length
 
-    # Return as response
     output = BytesIO()
     wb.save(output)
     output.seek(0)
@@ -458,21 +267,20 @@ def export_attendance_excel(request):
     response["Content-Disposition"] = f"attachment; filename={filename}"
     return response
 
+# -------------------------------
+# Employee Management Views
+# -------------------------------
 
-# -------------------------------------------------------------------
-# EMPLOYEE MANAGEMENT
-# -------------------------------------------------------------------
 def employeemanagement(request):
     employees = Employee.objects.select_related("user", "department").all()
     return render(request, "Employeemanagement.html", {"employees": employees})
-
 
 def generate_random_password(length=6):
     characters = string.ascii_letters + string.digits + "ayowev"
     return "".join(secrets.choice(characters) for _ in range(length))
 
-
 def add_employee(request):
+    # Create departments if not exist
     for name in ["HR", "Developer", "Sales", "Marketing"]:
         Department.objects.get_or_create(name=name)
     departments = Department.objects.all()
@@ -517,7 +325,6 @@ def add_employee(request):
 
     return render(request, "add_employee.html", {"departments": departments, "success_message": success_message})
 
-
 def edit_employee(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     departments = Department.objects.all()
@@ -553,10 +360,10 @@ def delete_employee(request, employee_id):
         return redirect("employeemanagement")
     return render(request, "delete_employee.html", {"employee": employee})
 
+# -------------------------------
+# DRF APIs for Login / Logout / Attendance / Permissions
+# -------------------------------
 
-# -------------------------------------------------------------------
-# FRONTEND APIs (DRF) – Login, Logout, Attendance, Permissions
-# -------------------------------------------------------------------
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -579,7 +386,6 @@ def login_view(request):
     except Employee.DoesNotExist:
         return Response({"error": "Employee does not exist"}, status=404)
 
-
 @api_view(["POST"])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -589,7 +395,6 @@ def logout_view(request):
         return Response({"message": "Logged out successfully"})
     except Exception:
         return Response({"error": "Logout failed"}, status=400)
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -607,10 +412,6 @@ def today_attendance(request):
         },
     })
 
-
-# -------------------------------------------------------------------
-# PERMISSIONS API
-# -------------------------------------------------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_employee_details(request):
@@ -619,7 +420,6 @@ def get_employee_details(request):
         return Response(EmployeeSerializer(employee).data)
     except Employee.DoesNotExist:
         return Response({"error": "Employee profile not found."}, status=404)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -638,41 +438,12 @@ def create_permission_request(request):
     )
     return Response(PermissionSerializer(permission).data, status=201)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_permissions(request):
     employee = Employee.objects.get(user=request.user)
     permissions = Permission.objects.filter(employee=employee).exclude(status="Pending").order_by("-date")
     return Response(PermissionSerializer(permissions, many=True).data)
-
-
-# -------------------------------------------------------------------
-# CHECK-IN / CHECK-OUT API
-# -------------------------------------------------------------------
-# @api_view(["POST"])
-# @permission_classes([IsAuthenticated])
-# def check_in(request):
-#     employee = Employee.objects.get(user=request.user)
-#     today = timezone.now().astimezone(IST).date()
-#     attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
-
-#     if attendance.check_in:
-#         return Response({"error": "Already checked in"}, status=400)
-
-#     utc_now = timezone.now()
-#     attendance.check_in = utc_now
-#     now_ist = utc_now.astimezone(IST)
-
-#     cutoff_time = time(10, 15)
-#     attendance.status = "Present" if now_ist.time() <= cutoff_time else "Late"
-#     attendance.save()
-
-#     return Response({
-#         "message": "Checked in",
-#         "check_in_time": now_ist.strftime("%I:%M %p"),
-#         "status": attendance.status
-#     })
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -681,20 +452,17 @@ def check_in(request):
     today = timezone.now().astimezone(IST).date()
     attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
 
-    # Already checked in
     if attendance.check_in:
         return Response({"error": "Already checked in"}, status=400)
 
     utc_now = timezone.now()
     now_ist = utc_now.astimezone(IST)
 
-    # ❌ Disable check-in after 11:00 AM IST
-    cutoff_disable = time(11, 0)
+    cutoff_disable = time(11, 0)  # Disable check-in after 11:00 AM
     if now_ist.time() > cutoff_disable:
         return Response({"error": "Check-in closed after 11:00 AM"}, status=400)
 
-    # Normal cutoff for "Present" / "Late"
-    cutoff_time = time(10, 15)
+    cutoff_time = CUTOFF_TIME
 
     attendance.check_in = utc_now
     attendance.status = "Present" if now_ist.time() <= cutoff_time else "Late"
@@ -706,58 +474,6 @@ def check_in(request):
         "status": attendance.status,
     })
 
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def check_out(request):
-    employee = Employee.objects.get(user=request.user)
-    today = timezone.now().astimezone(IST).date()
-    try:
-        attendance = Attendance.objects.get(employee=employee, date=today)
-    except Attendance.DoesNotExist:
-        return Response({"error": "No check-in record found"}, status=400)
-
-    if attendance.check_out:
-        return Response({"error": "Already checked out"}, status=400)
-
-    utc_now = timezone.now()
-    now_ist = utc_now.astimezone(IST)
-
-    attendance.check_out = utc_now
-    attendance.save()
-
-    return Response({
-        "message": "Checked out successfully",
-        "check_out_time": now_ist.strftime("%I:%M %p"),
-    })
-
-
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def check_out(request):
-    employee = Employee.objects.get(user=request.user)
-    today = timezone.now().astimezone(IST).date()
-    try:
-        attendance = Attendance.objects.get(employee=employee, date=today)
-    except Attendance.DoesNotExist:
-        return Response({"error": "No check-in record found"}, status=400)
-
-    if attendance.check_out:
-        return Response({"error": "Already checked out"}, status=400)
-
-    utc_now = timezone.now()
-    attendance.check_out = utc_now
-    attendance.save()
-
-    return Response({
-        "message": "Checked out",
-        "check_out_time": attendance.check_out.astimezone(IST).strftime("%I:%M %p")
-    })
-
-
-
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def check_out(request):
@@ -769,7 +485,6 @@ def check_out(request):
     except Attendance.DoesNotExist:
         return Response({"error": "No check-in record found"}, status=400)
 
-    # If already checked out
     if attendance.check_out:
         return Response({"error": "Already checked out"}, status=400)
 
@@ -813,14 +528,16 @@ def attendance_history(request):
     return Response(AttendanceSerializer(records.order_by("-date"), many=True).data)
 
 
-# -------------------------------------------------------------------
-# PASSWORD MANAGEMENT
-# -------------------------------------------------------------------
+
+# -------------------------------
+# Password Management API
+# -------------------------------
+
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def forgot_password(request):
-    identifier = request.data.get("employee_id")  # can be ID, email, or name
+    identifier = request.data.get("employee_id")  # ID, email, or name
     current_password = request.data.get("current_password")
     new_password = request.data.get("new_password")
     confirm_password = request.data.get("confirm_password")
@@ -842,11 +559,10 @@ def forgot_password(request):
         if not user.check_password(current_password):
             return Response({"error": "Current password is incorrect."}, status=400)
 
-        # Set new password
         user.set_password(new_password)
         user.save()
 
-        # Optional: store raw password for admin reference
+        # Optionally store raw password for admin reference
         employee.raw_password = new_password
         employee.save()
 
