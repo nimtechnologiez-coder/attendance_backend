@@ -2,28 +2,40 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 import os
 
+User = get_user_model()
+
 class Command(BaseCommand):
-    help = "Create superuser once using env variables"
+    help = "Create superuser only if it does not exist"
 
-    def handle(self, *args, **options):
-        if os.environ.get("CREATE_SUPERUSER") != "True":
-            self.stdout.write("Superuser creation disabled")
+    def handle(self, *args, **kwargs):
+        email = os.getenv("DJANGO_SUPERUSER_EMAIL")
+        password = os.getenv("DJANGO_SUPERUSER_PASSWORD")
+
+        if not email or not password:
+            self.stdout.write("⚠️ Admin credentials not provided")
             return
 
-        User = get_user_model()
+        user = User.objects.filter(email=email).first()
 
-        email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
-        password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "Admin@123")
-        name = os.environ.get("DJANGO_SUPERUSER_NAME", "Super Admin")
+        if user:
+            # ✅ FORCE admin flags (VERY IMPORTANT)
+            user.is_superuser = True
+            user.is_staff = True
+            user.is_admin = True
+            user.set_password(password)
+            user.save()
 
-        if User.objects.filter(email=email).exists():
-            self.stdout.write("✅ Superuser already exists")
+            self.stdout.write("✅ Superuser flags UPDATED")
             return
 
-        User.objects.create_superuser(
+        user = User.objects.create_user(
             email=email,
             password=password,
-            name=name
         )
+
+        user.is_superuser = True
+        user.is_staff = True
+        user.is_admin = True
+        user.save()
 
         self.stdout.write("✅ Superuser CREATED successfully")
