@@ -27,13 +27,11 @@ from .serializers import EmployeeSerializer, PermissionSerializer
 User = get_user_model()
 IST = pytz.timezone("Asia/Kolkata")
 
-# Constants defining cutoff times for attendance status
-CUTOFF_TIME = time(10, 15)  # 10:15 AM Late cutoff
-ABSENT_TIME = time(12, 0)   # 12:00 PM Absent cutoff
 
-# -------------------------------
-# Admin Authentication Views
-# -------------------------------
+CUTOFF_TIME = time(10, 15)  
+ABSENT_TIME = time(12, 0)   
+
+
 
 def login_page(request):
     if request.method == "POST":
@@ -53,9 +51,7 @@ def logout_page(request):
     logout(request)
     return redirect("login")
 
-# -------------------------------
-# Attendance Dashboard View
-# -------------------------------
+
 
 @login_required(login_url="login")
 def attendance_dashboard(request):
