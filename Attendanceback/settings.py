@@ -168,11 +168,15 @@ REST_FRAMEWORK = {
 # =========================================================
 # CORS & CSRF (VERCEL + LOCAL)
 # =========================================================
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://attedence.nimtechnologies.in",
+]
 
 CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:3000',
-    'https://attendance-frontend.vercel.app',  # replace after deploy
+    "https://attedence.nimtechnologies.in",
 ]
 
 
