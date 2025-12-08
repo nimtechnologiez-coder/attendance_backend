@@ -1,21 +1,33 @@
 from pathlib import Path
 import os
+import dj_database_url
 
-# -----------------------------
-# Base Directory
-# -----------------------------
+# =========================================================
+# BASE DIRECTORY
+# =========================================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# -----------------------------
-# Security
-# -----------------------------
-SECRET_KEY = 'django-insecure-ak--4mgtwwy5v-9xv26ir52a)ar206p7in6ln)*#ww=yy#v4hk'
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# -----------------------------
-# Installed Apps
-# -----------------------------
+# =========================================================
+# SECURITY
+# =========================================================
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-change-this-in-production"
+)
+
+DEBUG = os.environ.get("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+    ".onrender.com",
+]
+
+
+# =========================================================
+# INSTALLED APPS
+# =========================================================
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -24,137 +36,140 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # custom apps
+    # Custom Apps
     'Attendanceapp',
 
-    # third-party
+    # Third-party
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders',
 ]
 
-# -----------------------------
-# Middleware (FINAL FIXED)
-# -----------------------------
+
+# =========================================================
+# MIDDLEWARE
+# =========================================================
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
-    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# -----------------------------
-# URL Configuration
-# -----------------------------
+
+# =========================================================
+# URL CONFIG
+# =========================================================
 ROOT_URLCONF = 'Attendanceback.urls'
 
-# -----------------------------
-# Templates
-# -----------------------------
+
+# =========================================================
+# TEMPLATES
+# =========================================================
 TEMPLATES = [
     {
-        "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
-        "OPTIONS": {
-            "context_processors": [
-                "django.template.context_processors.debug",
-                "django.template.context_processors.request",
-                "django.contrib.auth.context_processors.auth",
-                "django.contrib.messages.context_processors.messages",
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
 ]
 
-# -----------------------------
+
+# =========================================================
 # WSGI
-# -----------------------------
+# =========================================================
 WSGI_APPLICATION = 'Attendanceback.wsgi.application'
 
-# -----------------------------
-# Database (Local MySQL)
-# -----------------------------
+
+# =========================================================
+# DATABASE (SQLite local / PostgreSQL Render)
+# =========================================================
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": "attendancedb",
-        "USER": "root",
-        "PASSWORD": "Saikumar278",  
-        "HOST": "localhost",
-        "PORT": "3306",
-        "OPTIONS": {
-            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        }
-    }
+    'default': dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        ssl_require=True
+    )
 }
 
-# -----------------------------
-# Custom User Model
-# -----------------------------
-AUTH_USER_MODEL = "Attendanceapp.User"
+
+# =========================================================
+# CUSTOM USER MODEL
+# =========================================================
+AUTH_USER_MODEL = 'Attendanceapp.User'
 
 AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
-# -----------------------------
-# Password Validators
-# -----------------------------
+
+# =========================================================
+# PASSWORD VALIDATORS
+# =========================================================
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# -----------------------------
-# Internationalization
-# -----------------------------
-LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Kolkata"
+
+# =========================================================
+# INTERNATIONALIZATION
+# =========================================================
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Asia/Kolkata'
 USE_I18N = True
 USE_TZ = False
 
-# -----------------------------
-# Static Files (FINAL Railway Setup)
-# -----------------------------
+
+# =========================================================
+# STATIC FILES (RENDER READY)
+# =========================================================
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATICFILES_DIRS = []  # optional
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-# -----------------------------
-# API Configuration
-# -----------------------------
+# =========================================================
+# DJANGO REST FRAMEWORK
+# =========================================================
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.TokenAuthentication",
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.AllowAny",
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.AllowAny',
     ),
 }
 
-# -----------------------------
-# CORS + CSRF
-# -----------------------------
-CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+
+# =========================================================
+# CORS & CSRF (VERCEL + LOCAL)
+# =========================================================
+CORS_ALLOW_ALL_ORIGINS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    'http://localhost:3000',
+    'https://attendance-frontend.vercel.app',  # replace after deploy
 ]
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# =========================================================
+# DEFAULT PRIMARY KEY FIELD
+# =========================================================
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
