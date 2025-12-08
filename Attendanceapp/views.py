@@ -367,20 +367,31 @@ def delete_employee(request, employee_id):
 def login_view(request):
     employee_id = request.data.get("employee_id")
     password = request.data.get("password")
+
     if not employee_id or not password:
         return Response({"error": "Employee ID and password required"}, status=400)
+
     try:
         employee = Employee.objects.get(employee_id=employee_id)
         user = employee.user
+
         if not user.check_password(password):
             return Response({"error": "Invalid credentials"}, status=401)
+
         token, _ = Token.objects.get_or_create(user=user)
+
         return Response({
             "token": token.key,
-            "user": {"id": user.id, "email": user.email, "employee_id": employee.employee_id}
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "employee_id": employee.employee_id
+            }
         })
+
     except Employee.DoesNotExist:
         return Response({"error": "Employee does not exist"}, status=404)
+
 
 @api_view(["POST"])
 @authentication_classes([TokenAuthentication])
