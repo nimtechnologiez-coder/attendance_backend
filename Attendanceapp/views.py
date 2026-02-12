@@ -1,3 +1,4 @@
+import math
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -31,8 +32,25 @@ IST = pytz.timezone("Asia/Kolkata")
 CUTOFF_TIME = time(10, 15)  
 ABSENT_TIME = time(12, 0)   
 
+# Geofencing Constants (Office Coordinates and Allowed Radius in Meters)
+OFFICE_LAT = 8.1631162
+OFFICE_LON = 77.4108498
+ALLOWED_RADIUS = 200  # 200 meters
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate the distance between two coordinates in meters using Haversine formula."""
+    R = 6371000  # Radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+
+    a = math.sin(dphi / 2)**2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
 
 
+
+@csrf_exempt
 def login_page(request):
     if request.method == "POST":
         email = request.POST.get("username")
@@ -372,7 +390,11 @@ def login_view(request):
         return Response({"error": "Employee ID and password required"}, status=400)
 
     try:
-        employee = Employee.objects.get(employee_id=employee_id)
+        employee = Employee.objects.get(
+            Q(employee_id=employee_id) |
+            Q(user__email=employee_id) |
+            Q(user__name=employee_id)
+        )
         user = employee.user
 
         if not user.check_password(password):
@@ -457,6 +479,20 @@ def list_permissions(request):
 def check_in(request):
     employee = Employee.objects.get(user=request.user)
     today = timezone.now().astimezone(IST).date()
+
+    # Geofencing Check
+    lat = request.data.get("latitude")
+    lon = request.data.get("longitude")
+
+    if lat is None or lon is None:
+        return Response({"error": "Location data is required"}, status=400)
+
+    distance = calculate_distance(float(lat), float(lon), OFFICE_LAT, OFFICE_LON)
+    if distance > ALLOWED_RADIUS:
+        return Response({
+            "error": f"You are outside the office range ({round(distance)}m away). Allowed radius is {ALLOWED_RADIUS}m."
+        }, status=400)
+
     attendance, _ = Attendance.objects.get_or_create(employee=employee, date=today)
 
     if attendance.check_in:
@@ -465,9 +501,9 @@ def check_in(request):
     utc_now = timezone.now()
     now_ist = utc_now.astimezone(IST)
 
-    cutoff_disable = time(11, 0)  # Disable check-in after 11:00 AM
+    cutoff_disable = time(15, 30)  # Disable check-in after 03:30 PM
     if now_ist.time() > cutoff_disable:
-        return Response({"error": "Check-in closed after 11:00 AM"}, status=400)
+        return Response({"error": "Check-in closed after 03:30 PM"}, status=400)
 
     cutoff_time = CUTOFF_TIME
 
@@ -486,6 +522,19 @@ def check_in(request):
 def check_out(request):
     employee = Employee.objects.get(user=request.user)
     today = timezone.now().astimezone(IST).date()
+
+    # Geofencing Check
+    lat = request.data.get("latitude")
+    lon = request.data.get("longitude")
+
+    if lat is None or lon is None:
+        return Response({"error": "Location data is required"}, status=400)
+
+    distance = calculate_distance(float(lat), float(lon), OFFICE_LAT, OFFICE_LON)
+    if distance > ALLOWED_RADIUS:
+        return Response({
+            "error": f"You are outside the office range ({round(distance)}m away). Allowed radius is {ALLOWED_RADIUS}m."
+        }, status=400)
 
     try:
         attendance = Attendance.objects.get(employee=employee, date=today)

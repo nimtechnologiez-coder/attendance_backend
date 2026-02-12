@@ -97,19 +97,16 @@ WSGI_APPLICATION = 'Attendanceback.wsgi.application'
 # =========================================================
 # DATABASE (SQLite local / PostgreSQL Render)
 # =========================================================
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'myprojectdb',
+        'USER': 'root',
+        'PASSWORD': 'nim@123',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+}
 
 
 
