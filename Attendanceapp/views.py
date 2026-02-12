@@ -501,9 +501,9 @@ def check_in(request):
     utc_now = timezone.now()
     now_ist = utc_now.astimezone(IST)
 
-    cutoff_disable = time(15, 30)  # Disable check-in after 03:30 PM
+    cutoff_disable = time(11, 0)  # Disable check-in after 11:00 AM
     if now_ist.time() > cutoff_disable:
-        return Response({"error": "Check-in closed after 03:30 PM"}, status=400)
+        return Response({"error": "Check-in closed after 11:00 AM"}, status=400)
 
     cutoff_time = CUTOFF_TIME
 
