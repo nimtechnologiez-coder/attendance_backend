@@ -2,7 +2,7 @@ django
 djangorestframework
 gunicorn
 dj-database-url
-psycopg2-binary
+PyMySQL
 django-cors-headers
 whitenoise
 pytz

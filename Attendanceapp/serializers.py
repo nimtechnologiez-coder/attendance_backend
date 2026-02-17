@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.utils import timezone
 import pytz
-from .models import Attendance, Employee, Permission
+from .models import Attendance, Employee, Permission, LeaveType, LeaveRequest
 
 # Timezone
 IST = pytz.timezone('Asia/Kolkata')
@@ -61,3 +61,53 @@ class PermissionSerializer(serializers.ModelSerializer):
             "duration_hours",
         ]
         read_only_fields = ["id", "employeeId", "employeeName"]
+
+
+# ✅ Leave Type Serializer
+class LeaveTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveType
+        fields = ["id", "name", "max_days_per_year", "requires_approval", "description", "is_active"]
+
+
+# ✅ Leave Request Serializer
+class LeaveRequestSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source="employee.user.name", read_only=True)
+    employee_id = serializers.CharField(source="employee.employee_id", read_only=True)
+    leave_type_name = serializers.CharField(source="leave_type.name", read_only=True)
+    approved_by_name = serializers.CharField(source="approved_by.name", read_only=True, allow_null=True)
+    total_days = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = LeaveRequest
+        fields = [
+            "id",
+            "employee_id",
+            "employee_name",
+            "leave_type",
+            "leave_type_name",
+            "start_date",
+            "end_date",
+            "reason",
+            "status",
+            "approved_by_name",
+            "approved_at",
+            "rejection_reason",
+            "total_days",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "employee_id", "employee_name", "status", "approved_by_name", "approved_at", "created_at", "updated_at"]
+
+
+# ✅ Leave Request Create Serializer (for employee submission)
+class LeaveRequestCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LeaveRequest
+        fields = ["leave_type", "start_date", "end_date", "reason"]
+    
+    def validate(self, data):
+        """Validate leave request dates."""
+        if data['end_date'] < data['start_date']:
+            raise serializers.ValidationError("End date must be after start date")
+        return data

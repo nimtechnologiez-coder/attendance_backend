@@ -85,92 +85,98 @@ def attendance_dashboard(request):
     except ValueError:
         start = end = date.today()
 
-    attendance_qs = Attendance.objects.select_related("employee__user", "employee__department").filter(date__range=(start, end))
+    try:
+        attendance_qs = Attendance.objects.select_related("employee__user", "employee__department").filter(date__range=(start, end))
 
-    # Apply employee filter (search by employee id or name)
-    if employee_filter:
-        attendance_qs = attendance_qs.filter(
-            Q(employee__employee_id__icontains=employee_filter) |
-            Q(employee__user__name__icontains=employee_filter)
-        )
+        # Apply employee filter (search by employee id or name)
+        if employee_filter:
+            attendance_qs = attendance_qs.filter(
+                Q(employee__employee_id__icontains=employee_filter) |
+                Q(employee__user__name__icontains=employee_filter)
+            )
 
-    # Filter by department if given (department id)
-    if department_filter:
-        attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
+        # Filter by department if given (department id)
+        if department_filter:
+            attendance_qs = attendance_qs.filter(employee__department_id=department_filter)
 
-    attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
+        attendance_map = {(a.employee_id, a.date): a for a in attendance_qs}
 
-    updated_attendance = []
-    employees = Employee.objects.all()
-    if department_filter:
-        employees = employees.filter(department_id=department_filter)
+        updated_attendance = []
+        employees = Employee.objects.all()
+        if department_filter:
+            employees = employees.filter(department_id=department_filter)
 
-    current_date = start
-    while current_date <= end:
-        for emp in employees:
-            record = attendance_map.get((emp.id, current_date))
-            if record:
-                record.approved_permissions = []
-                if request.user.is_superuser:
-                    permissions = Permission.objects.filter(employee=record.employee, date=record.date)
-                    for p in permissions:
-                        p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
-                        p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
-                        record.approved_permissions.append(p)
-                record.calculated_hours = None
-                if not record.check_in:
-                    record.status = "Absent"
-                    record.check_in_str = "-"
-                    record.check_out_str = "-"
-                else:
-                    local_checkin = record.check_in.astimezone(IST).time()
-                    if local_checkin > ABSENT_TIME:
+        current_date = start
+        while current_date <= end:
+            for emp in employees:
+                record = attendance_map.get((emp.id, current_date))
+                if record:
+                    record.approved_permissions = []
+                    if request.user.is_superuser:
+                        permissions = Permission.objects.filter(employee=record.employee, date=record.date)
+                        for p in permissions:
+                            p.start_time_str = p.start_time.strftime("%I:%M %p") if p.start_time else "-"
+                            p.end_time_str = p.end_time.strftime("%I:%M %p") if p.end_time else "-"
+                            record.approved_permissions.append(p)
+                    record.calculated_hours = None
+                    if not record.check_in:
                         record.status = "Absent"
-                    elif local_checkin > CUTOFF_TIME:
-                        record.status = "Late"
-                    else:
-                        record.status = "Present"
-                    record.check_in_str = record.check_in.astimezone(IST).strftime("%I:%M %p")
-                    if record.check_out:
-                        record.check_out_str = record.check_out.astimezone(IST).strftime("%I:%M %p")
-                        record.calculated_hours = record.working_hours
-                    else:
+                        record.check_in_str = "-"
                         record.check_out_str = "-"
-                updated_attendance.append(record)
-            else:
-                # No attendance record → mark as absent
-                temp = type("TempAttendance", (), {})()
-                temp.employee = emp
-                temp.date = current_date
-                temp.status = "Absent"
-                temp.check_in_str = "-"
-                temp.check_out_str = "-"
-                temp.calculated_hours = None
-                temp.approved_permissions = []
-                updated_attendance.append(temp)
-        current_date += timedelta(days=1)
+                    else:
+                        local_checkin = record.check_in.astimezone(IST).time()
+                        if local_checkin > ABSENT_TIME:
+                            record.status = "Absent"
+                        elif local_checkin > CUTOFF_TIME:
+                            record.status = "Late"
+                        else:
+                            record.status = "Present"
+                        record.check_in_str = record.check_in.astimezone(IST).strftime("%I:%M %p")
+                        if record.check_out:
+                            record.check_out_str = record.check_out.astimezone(IST).strftime("%I:%M %p")
+                            record.calculated_hours = record.working_hours
+                        else:
+                            record.check_out_str = "-"
+                    updated_attendance.append(record)
+                else:
+                    # No attendance record → mark as absent
+                    temp = type("TempAttendance", (), {})()
+                    temp.employee = emp
+                    temp.date = current_date
+                    temp.status = "Absent"
+                    temp.check_in_str = "-"
+                    temp.check_out_str = "-"
+                    temp.calculated_hours = None
+                    temp.approved_permissions = []
+                    updated_attendance.append(temp)
+            current_date += timedelta(days=1)
 
-    # Summarize attendance counts and total working hours
-    total_employees = Employee.objects.count()
-    present_count = sum(1 for r in updated_attendance if r.status == "Present")
-    absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
-    late_count = sum(1 for r in updated_attendance if r.status == "Late")
-    total_working_hours = sum(r.calculated_hours for r in updated_attendance if r.calculated_hours)
+        # Summarize attendance counts and total working hours
+        total_employees = Employee.objects.count()
+        present_count = sum(1 for r in updated_attendance if r.status == "Present")
+        absent_count = sum(1 for r in updated_attendance if r.status == "Absent")
+        late_count = sum(1 for r in updated_attendance if r.status == "Late")
+        total_working_hours = sum(r.calculated_hours for r in updated_attendance if r.calculated_hours)
 
-    context = {
-        "attendance": updated_attendance,
-        "start_date": start_date or "",
-        "end_date": end_date or "",
-        "employee_filter": employee_filter,
-        "department_filter": int(department_filter) if department_filter else "",
-        "departments": Department.objects.all(),
-        "total_employees": total_employees,
-        "present_count": present_count,
-        "absent_count": absent_count,
-        "late_count": late_count,
-        "total_working_hours": round(total_working_hours, 2),
-    }
-    return render(request, "home.html", context)
+        context = {
+            "attendance": updated_attendance,
+            "start_date": start_date or "",
+            "end_date": end_date or "",
+            "employee_filter": employee_filter,
+            "department_filter": int(department_filter) if department_filter else "",
+            "departments": Department.objects.all(),
+            "total_employees": total_employees,
+            "present_count": present_count,
+            "absent_count": absent_count,
+            "late_count": late_count,
+            "total_working_hours": round(total_working_hours, 2),
+        }
+        return render(request, "home.html", context)
+    
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return HttpResponse(f"Error: {str(e)}", status=500)
 
 # -------------------------------
 # Export Attendance Excel
@@ -626,3 +632,286 @@ def forgot_password(request):
 
     except Employee.DoesNotExist:
         return Response({"error": "Employee not found."}, status=404)
+
+
+# -------------------------------
+# Leave Management APIs
+# -------------------------------
+
+from .models import LeaveType, LeaveRequest
+from .serializers import LeaveTypeSerializer, LeaveRequestSerializer, LeaveRequestCreateSerializer
+from django.db.models import Sum, Q
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_leave_types(request):
+    """Get all active leave types."""
+    leave_types = LeaveType.objects.filter(is_active=True)
+    return Response(LeaveTypeSerializer(leave_types, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_leave_request(request):
+    """Employee creates a leave request."""
+    try:
+        employee = Employee.objects.get(user=request.user)
+    except Employee.DoesNotExist:
+        return Response({"error": "Employee profile not found."}, status=404)
+    
+    serializer = LeaveRequestCreateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"error": serializer.errors}, status=400)
+    
+    # Check leave balance
+    leave_type_id = serializer.validated_data['leave_type'].id
+    leave_type = LeaveType.objects.get(id=leave_type_id)
+    
+    # Calculate used leaves for this year
+    current_year = timezone.now().year
+    used_leaves_requests = LeaveRequest.objects.filter(
+        employee=employee,
+        leave_type=leave_type,
+        status='Approved',
+        start_date__year=current_year
+    )
+    used_leaves = sum(r.total_days for r in used_leaves_requests)
+    
+    requested_days = (serializer.validated_data['end_date'] - serializer.validated_data['start_date']).days + 1
+    
+    if used_leaves + requested_days > leave_type.max_days_per_year:
+        return Response({
+            "error": f"Insufficient leave balance. You have {leave_type.max_days_per_year - used_leaves} days remaining."
+        }, status=400)
+    
+    # Create leave request
+    try:
+        leave_request = LeaveRequest(
+            employee=employee,
+            leave_type=serializer.validated_data['leave_type'],
+            start_date=serializer.validated_data['start_date'],
+            end_date=serializer.validated_data['end_date'],
+            reason=serializer.validated_data['reason']
+        )
+        leave_request.save()
+        return Response(LeaveRequestSerializer(leave_request).data, status=201)
+    except Exception as e:
+        return Response({"error": str(e)}, status=400)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_leave_requests(request):
+    """Get employee's own leave requests."""
+    try:
+        employee = Employee.objects.get(user=request.user)
+    except Employee.DoesNotExist:
+        return Response({"error": "Employee profile not found."}, status=404)
+    
+    leave_requests = LeaveRequest.objects.filter(employee=employee).order_by('-created_at')
+    return Response(LeaveRequestSerializer(leave_requests, many=True).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def leave_balance(request):
+    """Get employee's leave balance for all leave types."""
+    try:
+        employee = Employee.objects.get(user=request.user)
+    except Employee.DoesNotExist:
+        return Response({"error": "Employee profile not found."}, status=404)
+    
+    current_year = timezone.now().year
+    leave_types = LeaveType.objects.filter(is_active=True)
+    
+    balance_data = []
+    for leave_type in leave_types:
+        used_requests = LeaveRequest.objects.filter(
+            employee=employee,
+            leave_type=leave_type,
+            status='Approved',
+            start_date__year=current_year
+        )
+        used = sum(request.total_days for request in used_requests)
+        
+        pending_requests = LeaveRequest.objects.filter(
+            employee=employee,
+            leave_type=leave_type,
+            status='Pending',
+            start_date__year=current_year
+        )
+        pending = sum(request.total_days for request in pending_requests)
+        
+        balance_data.append({
+            'leave_type': leave_type.name,
+            'total_allowed': leave_type.max_days_per_year,
+            'used': used,
+            'pending': pending,
+            'available': leave_type.max_days_per_year - used - pending
+        })
+    
+    return Response(balance_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_leave_requests(request):
+    """Get all pending leave requests (Admin/HR only)."""
+    if not request.user.is_admin:
+        return Response({"error": "Admin access required."}, status=403)
+    
+    pending_requests = LeaveRequest.objects.filter(status='Pending').order_by('-created_at')
+    return Response(LeaveRequestSerializer(pending_requests, many=True).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_leave_request(request, leave_id):
+    """Approve a leave request (Admin/HR only)."""
+    if not request.user.is_admin:
+        return Response({"error": "Admin access required."}, status=403)
+    
+    try:
+        leave_request = LeaveRequest.objects.get(id=leave_id)
+    except LeaveRequest.DoesNotExist:
+        return Response({"error": "Leave request not found."}, status=404)
+    
+    if leave_request.status != 'Pending':
+        return Response({"error": "Leave request already processed."}, status=400)
+    
+    leave_request.status = 'Approved'
+    leave_request.approved_by = request.user
+    leave_request.approved_at = timezone.now()
+    leave_request.save()
+    
+    return Response({
+        "message": "Leave request approved successfully.",
+        "leave_request": LeaveRequestSerializer(leave_request).data
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def reject_leave_request(request, leave_id):
+    """Reject a leave request (Admin/HR only)."""
+    if not request.user.is_admin:
+        return Response({"error": "Admin access required."}, status=403)
+    
+    try:
+        leave_request = LeaveRequest.objects.get(id=leave_id)
+    except LeaveRequest.DoesNotExist:
+        return Response({"error": "Leave request not found."}, status=404)
+    
+    if leave_request.status != 'Pending':
+        return Response({"error": "Leave request already processed."}, status=400)
+    
+    rejection_reason = request.data.get('rejection_reason', '')
+    
+    leave_request.status = 'Rejected'
+    leave_request.approved_by = request.user
+    leave_request.approved_at = timezone.now()
+    leave_request.rejection_reason = rejection_reason
+    leave_request.save()
+    
+    return Response({
+        "message": "Leave request rejected.",
+        "leave_request": LeaveRequestSerializer(leave_request).data
+    })
+
+
+# -------------------------------
+# Leave Management Template Views (for Django Admin Web Interface)
+# -------------------------------
+
+def leave_management(request):
+    """Leave management dashboard for admin (template view)."""
+    if not request.user.is_authenticated or not request.user.is_admin:
+        messages.error(request, "Admin access required")
+        return redirect('login')
+    
+    # Get current month for statistics
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    
+    # Get all leave requests
+    all_leaves = LeaveRequest.objects.select_related(
+        'employee__user', 'leave_type', 'approved_by'
+    ).order_by('-created_at')
+    
+    # Get pending leaves
+    pending_leaves = all_leaves.filter(status='Pending')
+    
+    # Calculate statistics
+    pending_count = pending_leaves.count()
+    approved_count = all_leaves.filter(
+        status='Approved',
+        created_at__month=current_month,
+        created_at__year=current_year
+    ).count()
+    rejected_count = all_leaves.filter(
+        status='Rejected',
+        created_at__month=current_month,
+        created_at__year=current_year
+    ).count()
+    total_count = all_leaves.count()
+    
+    context = {
+        'pending_leaves': pending_leaves,
+        'all_leaves': all_leaves,
+        'pending_count': pending_count,
+        'approved_count': approved_count,
+        'rejected_count': rejected_count,
+        'total_count': total_count,
+    }
+    
+    return render(request, 'leave_management.html', context)
+
+
+def approve_leave_web(request, leave_id):
+    """Approve leave request (template view)."""
+    if not request.user.is_authenticated or not request.user.is_admin:
+        messages.error(request, "Admin access required")
+        return redirect('login')
+    
+    if request.method == 'POST':
+        try:
+            leave_request = LeaveRequest.objects.get(id=leave_id)
+            
+            if leave_request.status != 'Pending':
+                messages.error(request, "Leave request already processed")
+            else:
+                leave_request.status = 'Approved'
+                leave_request.approved_by = request.user
+                leave_request.approved_at = timezone.now()
+                leave_request.save()
+                messages.success(request, f"Leave request for {leave_request.employee.user.name} approved successfully!")
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, "Leave request not found")
+    
+    return redirect('leave_management')
+
+
+def reject_leave_web(request, leave_id):
+    """Reject leave request (template view)."""
+    if not request.user.is_authenticated or not request.user.is_admin:
+        messages.error(request, "Admin access required")
+        return redirect('login')
+    
+    if request.method == 'POST':
+        try:
+            leave_request = LeaveRequest.objects.get(id=leave_id)
+            
+            if leave_request.status != 'Pending':
+                messages.error(request, "Leave request already processed")
+            else:
+                rejection_reason = request.POST.get('rejection_reason', '')
+                leave_request.status = 'Rejected'
+                leave_request.approved_by = request.user
+                leave_request.approved_at = timezone.now()
+                leave_request.rejection_reason = rejection_reason
+                leave_request.save()
+                messages.warning(request, f"Leave request for {leave_request.employee.user.name} rejected")
+        except LeaveRequest.DoesNotExist:
+            messages.error(request, "Leave request not found")
+    
+    return redirect('leave_management')

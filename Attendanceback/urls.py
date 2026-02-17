@@ -60,5 +60,19 @@ urlpatterns = [
 
     path("api/permission/create/", views.create_permission_request),
     path("api/permission/list/", views.list_permissions),
+
+    # Leave Management APIs
+    path("api/leave/types/", views.list_leave_types, name="leave_types"),
+    path("api/leave/request/", views.create_leave_request, name="create_leave_request"),
+    path("api/leave/my-requests/", views.my_leave_requests, name="my_leave_requests"),
+    path("api/leave/balance/", views.leave_balance, name="leave_balance"),
+    path("api/leave/pending/", views.pending_leave_requests, name="pending_leave_requests"),
+    path("api/leave/<int:leave_id>/approve/", views.approve_leave_request, name="approve_leave"),
+    path("api/leave/<int:leave_id>/reject/", views.reject_leave_request, name="reject_leave"),
+
+    # Leave Management Template Views (Django Admin Web Interface)
+    path("leave-management/", views.leave_management, name="leave_management"),
+    path("leave/<int:leave_id>/approve-web/", views.approve_leave_web, name="approve_leave_web"),
+    path("leave/<int:leave_id>/reject-web/", views.reject_leave_web, name="reject_leave_web"),
 ]
 
