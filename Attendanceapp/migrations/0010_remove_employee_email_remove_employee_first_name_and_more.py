@@ -21,12 +21,20 @@ class Migration(migrations.Migration):
             model_name='employee',
             name='first_name',
         ),
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='attendance',
+            name='check_in',
+        ),
+        migrations.AddField(
             model_name='attendance',
             name='check_in',
             field=models.DateTimeField(blank=True, null=True),
         ),
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='attendance',
+            name='check_out',
+        ),
+        migrations.AddField(
             model_name='attendance',
             name='check_out',
             field=models.DateTimeField(blank=True, null=True),
