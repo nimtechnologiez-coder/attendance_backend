@@ -193,19 +193,19 @@ if os.environ.get("CREATE_SUPERUSER") == "True":
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
-        username = os.environ.get("DJANGO_SUPERUSER_USERNAME", "admin")
         email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
+        name = os.environ.get("DJANGO_SUPERUSER_NAME", "Admin User")
         password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "Admin@123")
 
-        if not User.objects.filter(username=username).exists():
+        if not User.objects.filter(email=email).exists():
             User.objects.create_superuser(
-                username=username,
                 email=email,
+                name=name,
                 password=password
             )
-            print("✅ Superuser created")
+            print(f"✅ Superuser ({email}) created")
         else:
-            print("ℹ️ Superuser already exists")
+            print(f"ℹ️ Superuser ({email}) already exists")
 
     except Exception as e:
         print("⚠️ Superuser creation skipped:", e)
