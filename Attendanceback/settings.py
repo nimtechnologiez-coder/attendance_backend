@@ -21,11 +21,7 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-    ".onrender.com",
-]
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost,.onrender.com").split(",")
 
 
 # =========================================================
@@ -101,14 +97,10 @@ WSGI_APPLICATION = 'Attendanceback.wsgi.application'
 # DATABASE (SQLite local / PostgreSQL Render)
 # =========================================================
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'myprojectdb',
-        'USER': 'root',
-        'PASSWORD': 'nim@123',
-        'HOST': 'localhost',
-        'PORT': '3306',
-    }
+    'default': dj_database_url.config(
+        default='mysql://root:nim%40123@localhost:3306/myprojectdb',
+        conn_max_age=600
+    )
 }
 
 
@@ -179,6 +171,12 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
     "https://attedence.nimtechnologies.in",
 ]
+
+# Add production frontend URL from environment variable
+frontend_url = os.environ.get("FRONTEND_URL")
+if frontend_url:
+    CORS_ALLOWED_ORIGINS.append(frontend_url)
+    CSRF_TRUSTED_ORIGINS.append(frontend_url)
 
 
 
