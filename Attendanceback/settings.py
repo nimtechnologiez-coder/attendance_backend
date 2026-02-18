@@ -186,26 +186,6 @@ if frontend_url:
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # =========================================================
-# AUTO CREATE SUPERUSER (RENDER FREE METHOD)
+# DEFAULT PRIMARY KEY FIELD
 # =========================================================
-if os.environ.get("CREATE_SUPERUSER") == "True":
-    try:
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-
-        email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
-        name = os.environ.get("DJANGO_SUPERUSER_NAME", "Admin User")
-        password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "Admin@123")
-
-        if not User.objects.filter(email=email).exists():
-            User.objects.create_superuser(
-                email=email,
-                name=name,
-                password=password
-            )
-            print(f"✅ Superuser ({email}) created")
-        else:
-            print(f"ℹ️ Superuser ({email}) already exists")
-
-    except Exception as e:
-        print("⚠️ Superuser creation skipped:", e)
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
